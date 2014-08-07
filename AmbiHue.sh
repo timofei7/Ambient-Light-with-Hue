@@ -1,5 +1,17 @@
 #!/bin/bash
 
-curl --request PUT --data "{\"on\": true,\"bri\":$3,\"sat\":$2,\"hue\":$1,\"effect\":\"none\"}" http://YourIP/api/YourToken/lights/1/state
-curl --request PUT --data "{\"on\": true,\"bri\":$6,\"sat\":$5,\"hue\":$4,\"effect\":\"none\"}" http://YourIP/api/YourToken/lights/2/state
-curl --request PUT --data "{\"on\": true,\"bri\":$9,\"sat\":$8,\"hue\":$7,\"effect\":\"none\"}" http://YourIP/api/YourToken/lights/3/state
+host=dalights.cs.dartmouth.edu
+token=newdeveloper
+numlights=15
+argcount=0
+args=( "$@" )
+
+COUNTER=1
+while [  $COUNTER -le $numlights ]; do
+	#echo The counter is $COUNTER
+	#echo curl --request PUT --data "{\"on\": true,\"bri\":${args[$argcount+2]},\"sat\":${args[$argcount+1]},\"hue\":${args[$argcount]},\"effect\":\"none\"}" http://$host/api/$token/lights/$COUNTER/state 
+	curl --request PUT --data "{\"on\": true,\"bri\":${args[$argcount+2]},\"sat\":${args[$argcount+1]},\"hue\":${args[$argcount]},\"effect\":\"none\"}" http://$host/api/$token/lights/$COUNTER/state  
+	let COUNTER=COUNTER+1 
+	let argcount=argcount+3
+done
+
