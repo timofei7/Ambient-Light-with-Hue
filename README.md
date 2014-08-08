@@ -4,6 +4,7 @@ AmbiHue
 //Developed by Rajarshi Roy and James Bruce
 //Modified by Xubin Chen
 //Modified by Jip Roos (Multiple Lights, different colors)
+//Modified by Tim Tregubov (simpler more robust codes) 
 
 Procedures to get this software running:
 
@@ -13,9 +14,7 @@ Procedures to get this software running:
 
 3.Copy the processing code to your Processing Client.
 
-4.Download and modify my bash file to match your IP and Token (and add new lights if you have more than 3)
-
-5.Edit lampCount if more than 3 lights and edit "cmdArray[0]" (line 74) to change the location of the bash file
+4.Change the hostname and token and lightcount.
 
 5.Run the processing code, and a small windows will show up indicating the average color of your screen.
 

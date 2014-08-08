@@ -16,8 +16,7 @@ Robot robby; //creates object "robby" of robot class
 // Default hue color value
 final long DEFAULT_HUE = 52000; // purple
 
-long time = 0;
-String api_host = "http://dalights.cs.dartmouth.edu/api/newdeveloper/lights/1/state";
+String api_host = "http://dalights.cs.dartmouth.edu/api/newdeveloper/lights/";
 
 void setup()
 {
@@ -37,7 +36,6 @@ void setup()
 
 void draw()
 {
-  time = millis(); //<====================================================
 
   int lampCount = 15;
   int x = displayWidth; //possibly displayWidth
@@ -58,39 +56,32 @@ void draw()
 
 
   try {
-    // create a new array of 4 strings
-    String[] cmdArray = new String[1 + lampCount * 3];
 
-    // first argument is the program we want to open, in this case I put it within the App I created later
-    //cmdArray[0] = "/Users/tim/Desktop/Ambiant-Light-with-Hue/AmbiHue.sh";
+      for (int i=1; i <= lampCount; i++)
+      {
 
-    //for (int i=1; i<lampCount*3+1; i=i+3) {
-    for (int i=0; i <= lampCount; i++)
-    {
-      // for (int j = 0; j<3; j++) {
-      //   if (i<3) {
-      //     cmdArray[i+j] = colorArrays[i-1][j];
-      //     } else {
-      //       cmdArray[i+j] = colorArrays[(i-1)/3][j];
-      //     }
-      //   }
-      // }
-      int bri = 100;
-      int sat = 100;
-      int hue = 100;
 
-      println(colorArrays);
+        String bri = colorArrays[(i-1) % 3][2];
+        String sat = colorArrays[(i-1) % 3][1];
+        String hue = colorArrays[(i-1) % 3][0];
 
-      // int argcount=0;
-      // for (int k = 1; k <= lampCount; k++)
-      // {
-      //String command = "curl --request PUT --data \"{\"on\": true,\"bri\":"+cmdArray[argcount+2]+",\"sat\":"+cmdArray[argcount+1]+",\"hue\":"+cmdArray[argcount]+",\"effect\":\"none\"}\" http://dalights.cs.dartmouth.edu/api/newdeveloper/lights/"+k+"/state";
-      String command = "curl --request PUT --data \"{\"on\": true,\"bri\":"+bri+",\"sat\":"+sat+",\"hue\":"+hue+",\"effect\":\"none\"}\" http://dalights.cs.dartmouth.edu/api/newdeveloper/lights/"+i+"/state";
-      // argcount = argcount+3;
-      Process process = rut.exec(command);
-      // }
-      //curl --request PUT --data "{\"on\": true,\"bri\":${args[$argcount+2]},\"sat\":${args[$argcount+1]},\"hue\":${args[$argcount]},\"effect\":\"none\"}" http://$host/api/$token/lights/$COUNTER/state
 
+        String[] commands = new String[6];
+        commands[0] = "curl";
+        commands[1] = "--request";
+        commands[2] = "PUT";
+        commands[3] = "--data";
+        commands[4] = "{\"on\": true,\"bri\":"+bri+",\"sat\":"+sat+",\"hue\":"+hue+",\"effect\":\"none\"}";
+        commands[5] = api_host+i+"/state";
+        //println(commands);
+
+        java.util.Scanner s = new java.util.Scanner(rut.exec(commands).getInputStream()).useDelimiter("\\A");
+        String output = s.hasNext() ? s.next() : "";
+        println(output);
+
+        delay((int) 100);
+
+      }
     }
     catch(Exception e) {
       e.printStackTrace();
@@ -99,11 +90,6 @@ void draw()
 
     }
 
-    time = 100 - (millis() - time);
-    //println(time);
-    if (time > 0)
-    delay((int) time); //delay for safety
-    //make window background average color
   }
 
   String[] convertToColor(int r, int g, int b, int i) {
