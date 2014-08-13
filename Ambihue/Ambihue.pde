@@ -24,9 +24,14 @@ final long DEFAULT_HUE = 52000; // purple
 String api_host;
 String api_token;
 String api_lights_string;
+String poll_url;
+boolean use_polling;
+boolean update;
 
 int lampCount = 1;
 Runtime rut;
+int time;
+int poll_time;
 
 
 void setup()
@@ -35,6 +40,7 @@ void setup()
   port = new Serial(this, Serial.list()[0], 9600); //set baud rate
   size(100, 100); //window size (doesn't matter)
   rut = Runtime.getRuntime();
+  poll_time = millis();
   try //standard Robot class error check
   {
     robby = new Robot();
@@ -71,6 +77,8 @@ void readConfigs() {
     // load a configuration from a file inside the data folder
     props.load(new FileInputStream(dataPath("config.properties")));
 
+    poll_url = props.getProperty("env.poll_url");
+    use_polling = Boolean.parseBoolean(props.getProperty("env.use_polling"));
     api_host = props.getProperty("env.api_host");
     api_token = props.getProperty("env.api_token");
     api_lights_string = "http://"+api_host+"/api/"+api_token+"/lights/";
@@ -86,38 +94,46 @@ void readConfigs() {
 void draw()
 {
 
+  time = millis();
+
   int x = displayWidth; //possibly displayWidth
   int y = displayHeight; //possible displayHeight instead
-  int time = 0;
 
-
-  BufferedImage screenshot = robby.createScreenCapture(new Rectangle(new Dimension(x, y)));
-
-  for (int i=1; i <= lampCount; i++)
+  if ( use_polling  && (millis() - poll_time) > 500 )
   {
-    if (i % 2 == 0)
-    {
-      screenshot = robby.createScreenCapture(new Rectangle(new Dimension(x, y)));
-    }
-    int[] avarage = getAvarageValues(screenshot, x, y, i-1, lampCount);
-    String[] lamp = convertToColor(avarage[0], avarage[1], avarage[2], i);
-
-    String bri = lamp[2];
-    String sat = lamp[1];
-    String hue = lamp[0];
-
-
-    time = millis();
-
-    String json = "{\"on\": true,\"bri\":"+bri+",\"sat\":"+sat+",\"hue\":"+hue+",\"effect\":\"none\"}";
-    String url = api_lights_string+i+"/state";
-
-    String response = curl(json, url, "PUT");
-
-    time = abs(150 - (millis() - time));
-    //println(time);
-    delay((int) time); //delay for safety
+    update = testPoll();
+    poll_time = millis();
   }
+
+  if (update)
+  {
+    BufferedImage screenshot = robby.createScreenCapture(new Rectangle(new Dimension(x, y)));
+
+    for (int i=1; i <= lampCount; i++)
+    {
+      if (i % 2 == 0)
+      {
+        screenshot = robby.createScreenCapture(new Rectangle(new Dimension(x, y)));
+      }
+      int[] avarage = getAvarageValues(screenshot, x, y, i-1, lampCount);
+      String[] lamp = convertToColor(avarage[0], avarage[1], avarage[2], i);
+
+      String bri = lamp[2];
+      String sat = lamp[1];
+      String hue = lamp[0];
+
+
+      String json = "{\"on\": true,\"bri\":"+bri+",\"sat\":"+sat+",\"hue\":"+hue+",\"effect\":\"none\"}";
+      String url = api_lights_string+i+"/state";
+
+      String response = curl(json, url, "PUT");
+    }
+
+  }
+
+  time = abs(150 - (millis() - time));
+  delay((int) time); //delay for safety
+
 }
 
 
@@ -149,6 +165,18 @@ String curl(String json, String url, String type)
   }
 
   return output;
+}
+
+boolean testPoll()
+{
+  String response = curl("", poll_url, "GET").trim();
+  boolean t = false;
+  try {
+    t = Boolean.parseBoolean(response);
+  } catch (Exception e) {}
+  println(" poll: " + t);
+  return t;
+
 }
 
 
@@ -293,24 +321,4 @@ long[] RGBtoHSB(int r, int g, int b, long[] hsbvals) {
   hsbvals[2] = brightness;
   //println(hsbvals);
   return hsbvals;
-}
-
-
-/**
- * simple convenience wrapper object for the standard
- * Properties class to return pre-typed numerals
- */
-class P5Properties extends Properties {
-
-  boolean getBooleanProperty(String id, boolean defState) {
-    return boolean(getProperty(id,""+defState));
-  }
-
-  int getIntProperty(String id, int defVal) {
-    return int(getProperty(id,""+defVal));
-  }
-
-  float getFloatProperty(String id, float defVal) {
-    return float(getProperty(id,""+defVal));
-  }
 }
