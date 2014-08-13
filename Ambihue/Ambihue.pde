@@ -1,4 +1,5 @@
 //Developed by Rajarshi Roy and James Bruce, modified by Xubin Chen + Jip Roos (Multiple Lights, different colors)
+// refactored a bit by Tim Tregubov
 import java.awt.Robot; //java library that lets us take screenshots
 import java.awt.AWTException;
 import java.awt.event.InputEvent;
@@ -8,21 +9,32 @@ import java.awt.Dimension;
 import java.io.*;
 import processing.serial.*; //library for serial communication
 import http.requests.*;
+import java.util.Properties;
+
 
 
 Serial port; //creates object "port" of serial class
 Robot robby; //creates object "robby" of robot class
+Properties props;
 
 // Default hue color value
 final long DEFAULT_HUE = 52000; // purple
 
-String api_host = "http://dalights.cs.dartmouth.edu/api/newdeveloper/lights/";
+//configure this stuff in config.properties
+String api_host;
+String api_token;
+String api_lights_string; // = "http://dalights.cs.dartmouth.edu/api/newdeveloper/lights/";a
+
+int lampCount = 1;
+Runtime rut;
+
 
 void setup()
 {
   println(Serial.list());
   port = new Serial(this, Serial.list()[0], 9600); //set baud rate
   size(100, 100); //window size (doesn't matter)
+  rut = Runtime.getRuntime();
   try //standard Robot class error check
   {
     robby = new Robot();
@@ -32,17 +44,52 @@ void setup()
     println("Robot class not supported by your system!");
     exit();
   }
+
+  readConfigs();
+  if (api_lights_string !=null)
+  {
+     String response = curl("", api_lights_string, "GET");
+     String[] tmp = {response};
+     saveStrings("lights.tmp",  tmp);
+     try
+     {
+       JSONObject json = loadJSONObject("lights.tmp");
+       lampCount = json.size();
+     } catch (Exception e)
+     {
+       println(e);
+       exit();
+     }
+  }
+
 }
+
+
+void readConfigs() {
+  try {
+    props=new Properties();
+    // load a configuration from a file inside the data folder
+    props.load(new FileInputStream(dataPath("config.properties")));
+
+    api_host = props.getProperty("env.api_host");
+    api_token = props.getProperty("env.api_token");
+    api_lights_string = "http://"+api_host+"/api/"+api_token+"/lights/";
+
+  }
+  catch(IOException e) {
+    println("couldn't read config file..." + e.toString());
+  }
+}
+
+
 
 void draw()
 {
 
-  int lampCount = 15;
   int x = displayWidth; //possibly displayWidth
   int y = displayHeight; //possible displayHeight instead
   int time = 0;
 
-  Runtime rut = Runtime.getRuntime();
 
   BufferedImage screenshot = robby.createScreenCapture(new Rectangle(new Dimension(x, y)));
 
@@ -59,32 +106,53 @@ void draw()
     String sat = lamp[1];
     String hue = lamp[0];
 
-    String[] commands = new String[6];
-    commands[0] = "curl";
-    commands[1] = "--request";
-    commands[2] = "PUT";
-    commands[3] = "--data";
-    commands[4] = "{\"on\": true,\"bri\":"+bri+",\"sat\":"+sat+",\"hue\":"+hue+",\"effect\":\"none\"}";
-    commands[5] = api_host+i+"/state";
-    //println(commands);
 
     time = millis();
 
-    try
-    {
-      java.util.Scanner s = new java.util.Scanner(rut.exec(commands).getInputStream()).useDelimiter("\\A");
-      String output = s.hasNext() ? s.next() : "";
-      //println(output);
-    }
-    catch (Exception e) {
-    }
+    String json = "{\"on\": true,\"bri\":"+bri+",\"sat\":"+sat+",\"hue\":"+hue+",\"effect\":\"none\"}";
+    String url = api_lights_string+i+"/state";
 
-    time = 150 - (millis() - time);
+    String response = curl(json, url, "PUT");
+
+    time = abs(150 - (millis() - time));
     //println(time);
     delay((int) time); //delay for safety
   }
 }
 
+
+String curl(String json, String url, String type)
+{
+  String output = "";
+  String[] commands;
+
+  if (type == "PUT")
+  {
+    String[] putcommands = {"curl", "--request", "PUT", "--data", json, url };
+    commands = putcommands;
+  } else if (type == "GET")
+  {
+    String[] getcommands = {"curl", "--request", "GET", url };
+    commands = getcommands;
+  } else { commands = new String[0]; }
+
+  println(commands);
+
+  try
+  {
+    java.util.Scanner s = new java.util.Scanner(rut.exec(commands).getInputStream()).useDelimiter("\\A");
+    output = s.hasNext() ? s.next() : "";
+    println(output);
+  }
+  catch (Exception e) {
+    output = e.toString();
+  }
+
+  return output;
+}
+
+
+//does some things like increasing saturation and returns a string hsv represation
 String[] convertToColor(int r, int g, int b, int i) {
   // filter values to increase saturation
   int maxColorInt;
@@ -147,6 +215,7 @@ String[] convertToColor(int r, int g, int b, int i) {
   return colorArray;
 }
 
+//maybe a faster way to do this?
 int[] getAvarageValues(BufferedImage screenshot, int x, int y, int lampid, int lampCount) {
   int skipValue = 20;
   //sets of 8 bytes are: Alpha, Red, Green, Blue
@@ -176,7 +245,6 @@ int[] getAvarageValues(BufferedImage screenshot, int x, int y, int lampid, int l
   g=g/(aX*aY); //average green
   b=b/(aX*aY); //average blue
 
-
   //println(r+","+g+","+b);
   int[] valueArray = {
     r, g, b
@@ -184,6 +252,7 @@ int[] getAvarageValues(BufferedImage screenshot, int x, int y, int lampid, int l
   return valueArray;
 }
 
+//
 long[] RGBtoHSB(int r, int g, int b, long[] hsbvals) {
   long hue, saturation, brightness;
   if (hsbvals == null) {
@@ -224,4 +293,24 @@ long[] RGBtoHSB(int r, int g, int b, long[] hsbvals) {
   hsbvals[2] = brightness;
   //println(hsbvals);
   return hsbvals;
+}
+
+
+/**
+ * simple convenience wrapper object for the standard
+ * Properties class to return pre-typed numerals
+ */
+class P5Properties extends Properties {
+
+  boolean getBooleanProperty(String id, boolean defState) {
+    return boolean(getProperty(id,""+defState));
+  }
+
+  int getIntProperty(String id, int defVal) {
+    return int(getProperty(id,""+defVal));
+  }
+
+  float getFloatProperty(String id, float defVal) {
+    return float(getProperty(id,""+defVal));
+  }
 }
