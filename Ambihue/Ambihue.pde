@@ -136,13 +136,13 @@ String curl(String json, String url, String type)
     commands = getcommands;
   } else { commands = new String[0]; }
 
-  println(commands);
+  //println(commands);
 
   try
   {
     java.util.Scanner s = new java.util.Scanner(rut.exec(commands).getInputStream()).useDelimiter("\\A");
     output = s.hasNext() ? s.next() : "";
-    println(output);
+    //println(output);
   }
   catch (Exception e) {
     output = e.toString();
