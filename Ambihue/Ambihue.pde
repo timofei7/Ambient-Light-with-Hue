@@ -23,7 +23,7 @@ final long DEFAULT_HUE = 52000; // purple
 //configure this stuff in config.properties
 String api_host;
 String api_token;
-String api_lights_string; // = "http://dalights.cs.dartmouth.edu/api/newdeveloper/lights/";a
+String api_lights_string;
 
 int lampCount = 1;
 Runtime rut;
